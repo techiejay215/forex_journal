@@ -48,7 +48,7 @@ st.sidebar.header("Navigation")
 option = st.sidebar.selectbox(
     "Choose an option",
     ["Login", "Log Trade", "View Performance", "Settings"]
-)
+)import streamlit as st
 
 # ------------------ LOGIN ------------------
 if option == "Login":
@@ -60,8 +60,9 @@ if option == "Login":
         submit_button = st.form_submit_button(label="Enter")
 
         if submit_button:
-            real_username = os.getenv("EMAIL_USER")
-            real_password = os.getenv("EMAIL_PASSWORD")
+            # Retrieve credentials from Streamlit Secrets
+            real_username = st.secrets["credentials"]["username"]
+            real_password = st.secrets["credentials"]["password"]
 
             if username == real_username and password == real_password:
                 st.session_state["logged_in"] = True

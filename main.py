@@ -7,7 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 # Must be first!
-st.set_page_config(page_title="Trading Journal", page_icon="📈")
+st.set_page_config(page_title="Trading Journal", page_icon="📈", layout="wide")
 
 # Initialize session state for login
 if "logged_in" not in st.session_state:
@@ -49,7 +49,6 @@ option = st.sidebar.selectbox(
     "Choose an option",
     ["Login", "Log Trade", "View Performance", "Settings"]
 )
-import streamlit as st
 
 # ------------------ LOGIN ------------------
 if option == "Login":
@@ -62,14 +61,17 @@ if option == "Login":
 
         if submit_button:
             # Retrieve credentials from Streamlit Secrets
-            real_username = st.secrets["credentials"]["username"]
-            real_password = st.secrets["credentials"]["password"]
+            try:
+                real_username = st.secrets["credentials"]["username"]
+                real_password = st.secrets["credentials"]["password"]
 
-            if username == real_username and password == real_password:
-                st.session_state["logged_in"] = True
-                st.success("✅ Logged in successfully!")
-            else:
-                st.error("❌ Invalid login credentials!")
+                if username == real_username and password == real_password:
+                    st.session_state["logged_in"] = True
+                    st.success("✅ Logged in successfully!")
+                else:
+                    st.error("❌ Invalid login credentials!")
+            except KeyError:
+                st.error("❌ Credentials are missing in secrets!")
 
 # ------------------ MAIN APP ------------------
 if st.session_state.get("logged_in"):
@@ -78,36 +80,40 @@ if st.session_state.get("logged_in"):
     if option == "Log Trade":
         st.subheader("📌 Log Your Trade")
 
-        with st.form(key="trade_form"):
+        # Use columns for responsive layout
+        col1, col2 = st.columns(2)
+        with col1:
             pair = st.text_input("Currency Pair (e.g., EURUSD)", "")
             entry = st.number_input("Entry Price", min_value=0.0, format="%.5f")
             sl = st.number_input("Stop Loss", min_value=0.0, format="%.5f")
+
+        with col2:
             tp = st.number_input("Take Profit", min_value=0.0, format="%.5f")
             result = st.selectbox("Trade Result", ["Win", "Loss", "Breakeven"])
             date = st.date_input("Trade Date")
 
-            submit_button = st.form_submit_button(label="Log Trade")
+        submit_button = st.form_submit_button(label="Log Trade")
 
-            if submit_button:
-                # Calculate P/L and R:R safely
-                try:
-                    if result == "Win":
-                        pl = tp - entry
-                        rr = pl / (tp - entry) if (tp - entry) != 0 else 0
-                    elif result == "Loss":
-                        pl = entry - sl
-                        rr = pl / (entry - sl) if (entry - sl) != 0 else 0
-                    else:  # Breakeven
-                        pl = 0
-                        rr = 0
-                except ZeroDivisionError:
+        if submit_button:
+            # Calculate P/L and R:R safely
+            try:
+                if result == "Win":
+                    pl = tp - entry
+                    rr = pl / (tp - entry) if (tp - entry) != 0 else 0
+                elif result == "Loss":
+                    pl = entry - sl
+                    rr = pl / (entry - sl) if (entry - sl) != 0 else 0
+                else:  # Breakeven
                     pl = 0
                     rr = 0
+            except ZeroDivisionError:
+                pl = 0
+                rr = 0
 
-                new_trade = pd.DataFrame([[pair, entry, sl, tp, result, pl, rr, date]], columns=df.columns)
-                df = pd.concat([df, new_trade], ignore_index=True)
-                df.to_csv("trade_journal.csv", index=False)
-                st.success(f"✅ Trade logged successfully for {pair} on {date}!")
+            new_trade = pd.DataFrame([[pair, entry, sl, tp, result, pl, rr, date]], columns=df.columns)
+            df = pd.concat([df, new_trade], ignore_index=True)
+            df.to_csv("trade_journal.csv", index=False)
+            st.success(f"✅ Trade logged successfully for {pair} on {date}!")
 
     elif option == "View Performance":
         st.subheader("📈 Trade Performance")

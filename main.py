@@ -6,8 +6,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# Must be first!
-st.set_page_config(page_title="Trading Journal", page_icon="📈", layout="wide")
+# Set page title and icon
+st.set_page_config(page_title="Forex Trading Journal", page_icon="📈")
 
 # Initialize session state for login
 if "logged_in" not in st.session_state:
@@ -45,7 +45,7 @@ def send_email(subject, body, to_email):
 
 # Sidebar Navigation
 st.sidebar.header("Navigation")
-option = st.sidebar.selectbox(
+option = st.sidebar.radio(
     "Choose an option",
     ["Login", "Log Trade", "View Performance", "Settings"]
 )
@@ -55,68 +55,65 @@ if option == "Login":
     st.title("🔐 Login to Your Forex Journal")
 
     with st.form(key="login_form"):
-        username = st.text_input("Username (Email)")
-        password = st.text_input("Password", type='password')
-        submit_button = st.form_submit_button(label="Enter")
+        username = st.text_input("Username (Email)", placeholder="Enter your email")
+        password = st.text_input("Password", type='password', placeholder="Enter your password")
+        submit_button = st.form_submit_button(label="Login")
 
         if submit_button:
-            # Retrieve credentials from Streamlit Secrets
-            try:
-                real_username = st.secrets["credentials"]["username"]
-                real_password = st.secrets["credentials"]["password"]
+            real_username = st.secrets["credentials"]["username"]
+            real_password = st.secrets["credentials"]["password"]
 
-                if username == real_username and password == real_password:
-                    st.session_state["logged_in"] = True
-                    st.success("✅ Logged in successfully!")
-                else:
-                    st.error("❌ Invalid login credentials!")
-            except KeyError:
-                st.error("❌ Credentials are missing in secrets!")
+            if username == real_username and password == real_password:
+                st.session_state["logged_in"] = True
+                st.success("✅ Logged in successfully!")
+            else:
+                st.error("❌ Invalid login credentials!")
 
 # ------------------ MAIN APP ------------------
 if st.session_state.get("logged_in"):
     st.title("📒 Forex Trade Journal")
 
-    if option == "Log Trade":
+    # Main Dashboard - Tabs
+    tab1, tab2, tab3 = st.tabs(["📊 Log Trade", "📈 View Performance", "⚙️ Settings"])
+
+    # Log Trade Tab
+    with tab1:
         st.subheader("📌 Log Your Trade")
 
-        # Use columns for responsive layout
-        col1, col2 = st.columns(2)
-        with col1:
-            pair = st.text_input("Currency Pair (e.g., EURUSD)", "")
+        with st.form(key="trade_form"):
+            pair = st.text_input("Currency Pair (e.g., EURUSD)")
             entry = st.number_input("Entry Price", min_value=0.0, format="%.5f")
             sl = st.number_input("Stop Loss", min_value=0.0, format="%.5f")
-
-        with col2:
             tp = st.number_input("Take Profit", min_value=0.0, format="%.5f")
             result = st.selectbox("Trade Result", ["Win", "Loss", "Breakeven"])
             date = st.date_input("Trade Date")
 
-        submit_button = st.form_submit_button(label="Log Trade")
+            submit_button = st.form_submit_button(label="Log Trade")
 
-        if submit_button:
-            # Calculate P/L and R:R safely
-            try:
-                if result == "Win":
-                    pl = tp - entry
-                    rr = pl / (tp - entry) if (tp - entry) != 0 else 0
-                elif result == "Loss":
-                    pl = entry - sl
-                    rr = pl / (entry - sl) if (entry - sl) != 0 else 0
-                else:  # Breakeven
+            if submit_button:
+                # Calculate P/L and R:R safely
+                try:
+                    if result == "Win":
+                        pl = tp - entry
+                        rr = pl / (tp - entry) if (tp - entry) != 0 else 0
+                    elif result == "Loss":
+                        pl = entry - sl
+                        rr = pl / (entry - sl) if (entry - sl) != 0 else 0
+                    else:  # Breakeven
+                        pl = 0
+                        rr = 0
+                except ZeroDivisionError:
                     pl = 0
                     rr = 0
-            except ZeroDivisionError:
-                pl = 0
-                rr = 0
 
-            new_trade = pd.DataFrame([[pair, entry, sl, tp, result, pl, rr, date]], columns=df.columns)
-            df = pd.concat([df, new_trade], ignore_index=True)
-            df.to_csv("trade_journal.csv", index=False)
-            st.success(f"✅ Trade logged successfully for {pair} on {date}!")
+                new_trade = pd.DataFrame([[pair, entry, sl, tp, result, pl, rr, date]], columns=df.columns)
+                df = pd.concat([df, new_trade], ignore_index=True)
+                df.to_csv("trade_journal.csv", index=False)
+                st.success(f"✅ Trade logged successfully for {pair} on {date}!")
 
-    elif option == "View Performance":
-        st.subheader("📈 Trade Performance")
+    # View Performance Tab
+    with tab2:
+        st.subheader("📊 Trade Performance")
 
         if not df.empty:
             st.dataframe(df)
@@ -124,7 +121,7 @@ if st.session_state.get("logged_in"):
             win_rate = (df["Result"] == "Win").mean() * 100
             avg_rr = df["R:R"].mean()
 
-            st.subheader("📊 Summary")
+            st.subheader("📈 Summary")
             st.write(f"**Win Rate**: {win_rate:.2f}%")
             st.write(f"**Average R:R**: {avg_rr:.2f}")
 
@@ -140,9 +137,10 @@ if st.session_state.get("logged_in"):
         else:
             st.info("No trades logged yet!")
 
-    elif option == "Settings":
+    # Settings Tab
+    with tab3:
         st.subheader("⚙️ Settings")
-        st.write("Feature under construction. You’ll soon be able to update your login or notification preferences.")
+        st.write("This section is under construction. Soon, you will be able to update your login or notification preferences.")
 
 else:
     if option != "Login":

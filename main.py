@@ -48,7 +48,8 @@ st.sidebar.header("Navigation")
 option = st.sidebar.selectbox(
     "Choose an option",
     ["Login", "Log Trade", "View Performance", "Settings"]
-)import streamlit as st
+)
+import streamlit as st
 
 # ------------------ LOGIN ------------------
 if option == "Login":
